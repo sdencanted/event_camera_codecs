@@ -57,30 +57,30 @@ public:
 };
 
 template <class EventProcT>
-class DecoderFactory<EventPacket, EventProcT>
+class DecoderFactory<MagEventPacket, EventProcT>
 {
 public:
-  std::shared_ptr<Decoder<EventPacket, EventProcT>> newInstance(const std::string & codec)
+  std::shared_ptr<Decoder<MagEventPacket, EventProcT>> newInstance(const std::string & codec)
   {
     if (codec == "evt3") {
-      return (std::make_shared<evt3::Decoder<EventPacket, EventProcT>>());
+      return (std::make_shared<evt3::Decoder<MagEventPacket, EventProcT>>());
     } else if (codec == "mono") {
-      return (std::make_shared<mono::Decoder<EventPacket, EventProcT>>());
+      return (std::make_shared<mono::Decoder<MagEventPacket, EventProcT>>());
     } else if (codec == "trigger") {
-      return (std::make_shared<trigger::Decoder<EventPacket, EventProcT>>());
+      return (std::make_shared<trigger::Decoder<MagEventPacket, EventProcT>>());
     }
     // return null pointer if codec not found
     return (nullptr);
   }
 
   // factory method to get decoder from shared pool
-  Decoder<EventPacket, EventProcT> * getInstance(const EventPacket & msg)
+  Decoder<MagEventPacket, EventProcT> * getInstance(const MagEventPacket & msg)
   {
     return (getInstance(msg.encoding, msg.width, msg.height));
   }
 
   // (deprecated) factory method to get decoder from shared pool
-  Decoder<EventPacket, EventProcT> * getInstance(
+  Decoder<MagEventPacket, EventProcT> * getInstance(
     const std::string & codec, uint16_t width, uint16_t height)
   {
     auto it = decoderMap_.find(codec);
@@ -93,7 +93,7 @@ public:
   }
 
 private:
-  std::unordered_map<std::string, std::shared_ptr<Decoder<EventPacket, EventProcT>>> decoderMap_;
+  std::unordered_map<std::string, std::shared_ptr<Decoder<MagEventPacket, EventProcT>>> decoderMap_;
 };
 
 }  // namespace event_camera_codecs

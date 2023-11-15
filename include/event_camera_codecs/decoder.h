@@ -36,7 +36,7 @@ for efficient inlining of the processing code, i.e. a decoded event
 can be processed immediately without incurring the cost of storing
 the event in memory.
 
-\tparam MsgT ROS message type to decode, e.g. EventPacket
+\tparam MsgT ROS message type to decode, e.g. MagEventPacket
 \tparam EventProcT EventProcessor class that gets called once an event is decoded.
 */
 template <class MsgT, class EventProcT = NoOpEventProcessor>
@@ -126,6 +126,11 @@ public:
   not available, e.g. when calling from python. 
   */
   virtual void decode(const uint8_t * buf, size_t bufSize, EventProcT * processor) = 0;
+  /*!
+  \brief decode buffer without using message type. Use this method if the message is
+  not available, e.g. when calling from python. 
+  */
+  virtual void magDecode(const uint8_t * buf, size_t bufSize,float firstTheta, float lastTheta, EventProcT * processor) = 0;
   /*!
   \brief decode buffer until reaching time limit, without using message type. Use
   this method if the message is not available, e.g. when calling from python.

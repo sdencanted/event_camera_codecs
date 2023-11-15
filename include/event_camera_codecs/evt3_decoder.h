@@ -34,7 +34,7 @@ template <class MsgT, class EventProcT>
 class Decoder : public event_camera_codecs::Decoder<MsgT, EventProcT>
 {
 public:
-  using timestamp_t = uint64_t;
+c
 
   void decode(const uint8_t * buf, size_t bufSize, EventProcT * processor) override
   {
@@ -43,6 +43,16 @@ public:
       static bool isInFuture(uint64_t, uint64_t) { return (false); }
     };
     doDecode<NoTimeLimit>(buf, bufSize, processor, 0, nullptr, nullptr);
+  }
+
+
+  void magDecode(const uint8_t * buf, size_t bufSize,float firstTheta, float lastTheta, EventProcT * processor) override
+  {
+    struct NoTimeLimit
+    {
+      static bool isInFuture(uint64_t, uint64_t) { return (false); }
+    };
+    doMagDecode<NoTimeLimit>(buf, bufSize, firstTheta,  lastTheta, processor, 0, nullptr, nullptr);
   }
 
   size_t decodeUntil(
@@ -163,6 +173,117 @@ public:
     processor->finished();
   }
 
+  // TODO: Every event in buf has the same firstTheta and lastTheta, skip eventCD() as it accumulates everything to an image and instead prepare to send it to CUDA for motion compensation.
+  // shared: firstTheta,lastTheta
+  // individual: x,y,time, (polarity probably can skip as it's not used in classic kronecker delta)
+  template <class TimeLimiterT>
+  void doMagDecode(
+    const uint8_t * buf, size_t bufSize, float firstTheta, float lastTheta, EventProcT * processor, uint64_t timeLimit,
+    size_t * numConsumed, uint64_t * nextTime)
+  {
+    const size_t numRead = bufSize / sizeof(Event);
+    const Event * buffer = reinterpret_cast<const Event *>(buf);
+    
+    uint16_t last_processed_timeLow{0};         // time stamp low
+
+
+
+    for (size_t i = findValidTime(buffer, numRead); i < numRead; i++) {
+      switch (buffer[i].code) {
+        case Code::ADDR_X: {
+          const AddrX * e = reinterpret_cast<const AddrX *>(&buffer[i]);
+          if (e->x < width_ && ey_ < height_) {
+            //delay until motion compensated (ideally compensate every time theres 1 event for each cuda core)
+            // processor->eventCD(makeTime(timeHigh_, timeLow_), e->x, ey_, e->polarity);
+            processor->eventCDMag(makeTime(timeHigh_, timeLow_), e->x, ey_);
+            numEvents_++;
+          }
+        } break;
+        case Code::ADDR_Y: {
+          const AddrY * e = reinterpret_cast<const AddrY *>(&buffer[i]);
+          ey_ = e->y;  // save for later
+        } break;
+        case Code::TIME_LOW: {
+          const TimeLow * e = reinterpret_cast<const TimeLow *>(&buffer[i]);
+          timeLow_ = e->t;
+          // if (TimeLimiterT::isInFuture(makeTime(timeHigh_, timeLow_), timeLimit)) {
+          //   // stopping early because we reached the time limit
+          //   *numConsumed = i * sizeof(Event);
+          //   *nextTime = makeTime(timeHigh_, timeLow_);
+          //   processor->finished();
+          //   return;
+          // }
+        } break;
+        case Code::TIME_HIGH: {
+          const TimeHigh * e = reinterpret_cast<const TimeHigh *>(&buffer[i]);
+          timeHigh_ = update_high_time(e->t, timeHigh_);
+        } break;
+        case Code::VECT_BASE_X: {
+          const VectBaseX * b = reinterpret_cast<const VectBaseX *>(&buffer[i]);
+          currentPolarity_ = b->pol;
+          currentBaseX_ = b->x;
+        } break;
+        case Code::VECT_8: {
+          const Vect8 * b = reinterpret_cast<const Vect8 *>(&buffer[i]);
+          for (int i = 0; i < 8; i++) {
+            if (b->valid & (1 << i)) {
+              const uint16_t ex = currentBaseX_ + i;
+              if (ex < width_ && ey_ < height_) {
+                // processor->eventCD(makeTime(timeHigh_, timeLow_), ex, ey_, currentPolarity_);
+                processor->eventCDMag(makeTime(timeHigh_, timeLow_), ex, ey_);
+                numEvents_++;
+              }
+            }
+          }
+          currentBaseX_ += 8;
+        } break;
+        case Code::VECT_12: {
+          const Vect12 * b = reinterpret_cast<const Vect12 *>(&buffer[i]);
+          for (int i = 0; i < 12; i++) {
+            if (b->valid & (1 << i)) {
+              const uint16_t ex = currentBaseX_ + i;
+              if (ex < width_ && ey_ < height_) {
+                // processor->eventCD(
+                //   makeTime(timeHigh_, timeLow_), currentBaseX_ + i, ey_, currentPolarity_);
+                processor->eventCDMag(makeTime(timeHigh_, timeLow_), currentBaseX_ + i, ey_);
+                numEvents_++;
+              }
+            }
+          }
+          currentBaseX_ += 12;
+        } break;
+        case Code::EXT_TRIGGER: {
+          const ExtTrigger * e = reinterpret_cast<const ExtTrigger *>(&buffer[i]);
+          processor->eventExtTrigger(makeTime(timeHigh_, timeLow_), e->edge, e->id);
+        } break;
+        case Code::OTHERS: {
+#if 0
+              const Others * e = reinterpret_cast<const Others *>(&buffer[i]);
+              const SubType subtype = static_cast<SubType>(e->subtype);
+              if (subtype != SubType::MASTER_END_OF_FRAME) {
+                std::cout << "ignoring OTHERS code: " << toString(subtype) << std::endl;
+              }
+#endif
+        } break;
+          // ------- the CONTINUED codes are used in conjunction with
+          // the OTHERS code, so ignore as well
+        case Code::CONTINUED_4:
+        case Code::CONTINUED_12: {
+        } break;
+        default:
+          // ------- all the vector codes are not generated
+          // by the Gen3 sensor I have....
+          std::cout << "evt3 event camera decoder got unsupported code: "
+                    << static_cast<int>(buffer[i].code) << std::endl;
+          throw std::runtime_error("got unsupported code!");
+          break;
+      }
+    }
+    if (numConsumed != nullptr) {
+      *numConsumed = bufSize;  // have consumed the entire buffer
+    }
+    processor->finished();
+  }
   bool summarize(
     const uint8_t * buf, size_t bufSize, uint64_t * firstTS, uint64_t * lastTS,
     size_t * numEventsOnOff) override

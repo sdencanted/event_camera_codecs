@@ -19,7 +19,7 @@
 
 #include "event_bag_reader.hpp"
 
-using event_camera_codecs::EventPacket;
+using event_camera_codecs::MagEventPacket;
 
 class CheckSumProcessor : public event_camera_codecs::EventProcessor
 {
@@ -71,7 +71,7 @@ TEST(event_camera_codecs, mono_cd_test)
 {
   CheckSumProcessor proc;
 
-  event_camera_codecs::DecoderFactory<EventPacket, CheckSumProcessor> decoderFactory;
+  event_camera_codecs::DecoderFactory<MagEventPacket, CheckSumProcessor> decoderFactory;
   EventBagReader ebr("test_data_mono_cd");
   while (const auto msgPtr = ebr.next()) {
     auto decoder = decoderFactory.getInstance(*msgPtr);
@@ -88,7 +88,7 @@ TEST(event_camera_codecs, evt3_trigger)
 {
   CheckSumProcessor proc;
 
-  event_camera_codecs::DecoderFactory<EventPacket, CheckSumProcessor> decoderFactory;
+  event_camera_codecs::DecoderFactory<MagEventPacket, CheckSumProcessor> decoderFactory;
   EventBagReader ebr("test_data_evt3_trigger");
   while (const auto msgPtr = ebr.next()) {
     auto decoder = decoderFactory.getInstance(*msgPtr);

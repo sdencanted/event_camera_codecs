@@ -49,7 +49,7 @@ To also build the unit tests, add the cmake argument ``-DEVENT_CAMERA_CODECS_BUI
 #include <event_camera_codecs/decoder.h>
 #include <event_camera_codecs/decoder_factory.h>
 
-using event_camera_codecs::EventPacket;
+using event_camera_codecs::MagEventPacket;
 
 class MyProcessor : public event_camera_codecs::EventProcessor
 {
@@ -67,12 +67,12 @@ MyProcessor processor;
 // the decoder factory method is templated on the event processor
 // to permit inlining of methods like eventCD() above.
 
-event_camera_codecs::DecoderFactory<EventPacket, MyProcessor> decoderFactory;
+event_camera_codecs::DecoderFactory<MagEventPacket, MyProcessor> decoderFactory;
 
 // to get callbacks into MyProcessor, feed the message buffer
 // into the decoder like so
 
-void eventMsg(const event_camera_codecs::EventPacketConstSharedPtr & msg) {
+void eventMsg(const event_camera_codecs::MagEventPacketConstSharedPtr & msg) {
   // will create a new decoder on first call, from then on returns existing one
   auto decoder = decoderFactory.getInstance(*msg);
   if (!decoder) { // msg->encoding was invalid
@@ -88,7 +88,7 @@ void eventMsg(const event_camera_codecs::EventPacketConstSharedPtr & msg) {
    frameTimes is an ordered queue of frame times.
    */
 
-void eventMsg2(const event_camera_codecs::EventPacketConstSharedPtr & msg) {
+void eventMsg2(const event_camera_codecs::MagEventPacketConstSharedPtr & msg) {
   auto decoder = decoderFactory.getInstance(*msg);
   uint64_t nextTime{0};
   // The loop will exit when all events in msg have been processed

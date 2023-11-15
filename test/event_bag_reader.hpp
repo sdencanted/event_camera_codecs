@@ -24,14 +24,14 @@
 class EventBagReader
 {
 public:
-  using EventPacket = event_camera_msgs::msg::EventPacket;
+  using MagEventPacket = event_camera_msgs::msg::MagEventPacket;
   explicit EventBagReader(const std::string & bagName) { reader_.open(bagName); }
-  EventPacket::ConstSharedPtr next()
+  MagEventPacket::ConstSharedPtr next()
   {
     if (reader_.has_next()) {
       auto msg = reader_.read_next();
       rclcpp::SerializedMessage serializedMsg(*msg->serialized_data);
-      auto m = std::make_shared<EventPacket>();
+      auto m = std::make_shared<MagEventPacket>();
       serialization_.deserialize_message(&serializedMsg, m.get());
       return (m);
     }
@@ -40,7 +40,7 @@ public:
 
 private:
   rosbag2_cpp::Reader reader_;
-  rclcpp::Serialization<EventPacket> serialization_;
+  rclcpp::Serialization<MagEventPacket> serialization_;
 };
 
 #endif  // EVENT_BAG_READER_HPP_

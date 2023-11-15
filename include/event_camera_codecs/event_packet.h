@@ -20,20 +20,20 @@
 
 #ifdef USING_ROS_1
 
-#include <event_camera_msgs/EventPacket.h>
+#include <event_camera_msgs/MagEventPacket.h>
 namespace event_camera_codecs
 {
-using EventPacket = event_camera_msgs::EventPacket;
-using EventPacketConstSharedPtr = event_camera_msgs::EventPacket::MSG_CONST_SHARED_PTR;
+using MagEventPacket = event_camera_msgs::MagEventPacket;
+using MagEventPacketConstSharedPtr = event_camera_msgs::MagEventPacket::MSG_CONST_SHARED_PTR;
 }  // namespace event_camera_codecs
 
 #else
 
-#include <event_camera_msgs/msg/event_packet.hpp>
+#include <event_camera_msgs/msg/mag_event_packet.hpp>
 namespace event_camera_codecs
 {
-using EventPacket = event_camera_msgs::msg::EventPacket;
-using EventPacketConstSharedPtr = event_camera_msgs::msg::EventPacket::MSG_CONST_SHARED_PTR;
+using MagEventPacket = event_camera_msgs::msg::MagEventPacket;
+using MagEventPacketConstSharedPtr = event_camera_msgs::msg::MagEventPacket::MSG_CONST_SHARED_PTR;
 }  // namespace event_camera_codecs
 
 #endif
